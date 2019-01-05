@@ -1,0 +1,95 @@
+<project name="http" basedir="." default="compile">
+  <property name="home.dir"  value="." />
+  <property name="src.dir"   value="src" />
+  <property name="build.dir" value="out" />
+  <property name="lib.dir"   value="lib" />
+  <property name="dist.dir"  value="${basedir}" />
+
+  <!-- 
+    This version number is sourced in org.joedog.http.Version
+    This target parses that file, trims white space and newlines 
+    and assigns the release number to the version property.
+   -->
+  <target name="release">
+  <loadfile srcfile="${src.dir}/org/joedog/${ant.project.name}/Version.java" property="version"> 
+    <filterchain> 
+      <linecontainsregexp> 
+        <regexp pattern='public final static String version   = ".*";'/> 
+      </linecontainsregexp> 
+      <tokenfilter> 
+        <replaceregex pattern='public final static String version   = "(.*)";' replace='\1'/> 
+        <replaceregex pattern=" "  replace="" flags="g"/>
+      </tokenfilter> 
+    </filterchain> 
+  </loadfile> 
+  <script language="javascript">
+    var version = project.getProperty("version");
+    project.setProperty("version", version.replaceAll("\n", ""));
+  </script>
+  <echo>"${version}"</echo> 
+  </target>
+
+  <target name="compile">
+    <mkdir dir="${build.dir}" />
+    <javac debug="true" includeantruntime="false" srcdir="${src.dir}" destdir="${build.dir}">
+      <classpath refid="classpath" />
+      <include name="**/*.java"/>
+    </javac>        
+  </target>
+
+  <target name="clean">
+    <delete dir="${build.dir}"></delete>
+  </target>
+
+  <path id="classpath">
+    <pathelement location="${build.dir}" />
+  </path>
+
+  <target name="docs">
+    <javadoc packagenames="org.joedog.${ant.project.name}.*"
+             sourcepath="src"
+             excludepackagenames="org.joedog.${ant.project.name}.images.*"
+             defaultexcludes="yes"
+             destdir="docs/api"
+             author="true"
+             version="true"
+             use="true"
+             windowtitle="Pinochle API">
+      <doctitle><![CDATA[<h1>Pinochle</h1>]]></doctitle>
+      <bottom><![CDATA[<i>Copyright &#169; 2013 Jeffrey Fulmer, et al. All Rights Reserved.</i>]]></bottom>
+      <tag name="todo" scope="all" description="To do:"/>
+      <group title="Group 1 Packages" packages="com.dummy.test.a*"/>
+      <group title="Group 2 Packages" packages="com.dummy.test.b*:com.dummy.test.c*"/>
+      <link offline="true" href="http://docs.oracle.com/javase/7/docs/api/" packagelistLoc="C:\tmp"/>
+      <link href="http://docs.oracle.com/javase/7/docs/api/"/>
+    </javadoc>
+  </target>
+
+  <target name="run" depends="clean,compile">
+    <java classname="test" fork="true" spawn="false">
+      <classpath refid="classpath" />
+      <jvmarg value="-XX:-OmitStackTraceInFastThrow"/>
+    </java>
+  </target>
+
+  <target name="jar" depends="release,clean,compile">
+    <jar jarfile="${dist.dir}/${ant.project.name}-${version}.jar" basedir="${build.dir}">  
+      <manifest>  
+        <attribute name="Built-By"           value="${user.name}" />  
+        <attribute name="Main-Class"         value="org.joedog.${ant.project.name}.Main" />  
+        <attribute name="SplashScreen-Image" value="org/joedog/${ant.project.name}/images/splash.png" />  
+        <section name="common">  
+          <attribute name="Specification-Title" value="${component.name}" />  
+          <attribute name="Specification-Version" value="${component.version}" />  
+          <attribute name="Specification-Vendor" value="${component.vendor}" />  
+          <attribute name="Implementation-Title" value="${component.name}" />  
+          <attribute name="Implementation-Version" value="${component.version} ${TODAY}" />  
+          <attribute name="Implementation-Vendor" value="${component.vendor}" />  
+        </section>  
+        <attribute name="Class-Path" value="${libs.dir}" />  
+      </manifest>  
+    </jar> 
+  </target>
+
+  <target name="main" depends="clean,run" />
+</project>
