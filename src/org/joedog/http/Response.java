@@ -29,6 +29,10 @@ public class Response <K, V> extends Headers {
     }
   }
 
+  public int getCode() {
+    return this.code;
+  }
+
   public Auth.TYPE getAuthorizationType() {
     return this.type;
   }
