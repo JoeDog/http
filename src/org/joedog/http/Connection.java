@@ -100,7 +100,7 @@ public class Connection {
     os.flush();
     return true;
   }
- 
+
   private boolean open(String host, int port, boolean secure){
     this.sock = new Socket();
     try {
