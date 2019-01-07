@@ -20,8 +20,10 @@ public class HTTP {
   private Config     conf    = null;
 
   public HTTP() {
-    this.version = 1.1;
     this.conf    = load(null);
+    if (this.conf.getProperty("version") != null) {
+      this.version = Double.parseDouble(this.conf.getProperty("version"));
+    }
   }
 
   public HTTP(double version) {
@@ -58,6 +60,25 @@ public class HTTP {
     }
     System.out.println(response.toString());
     System.out.println(this.conn.read(8084));
+
+    switch (response.getCode()) {
+      case 401: // Authenticate
+        request.setAuthorizationHeader(response.getAuthorizationType(), response.getAuthorizationRealm());
+        this.conn = new Connection(this.url.getHost(), this.url.getDefaultPort(), this.secure);
+        this.conn.write(request.toString());
+        System.out.println(request.toString());
+        response = industry.getResponse(this.version);
+        while (true) {
+          String line = this.conn.readline();
+          if (line == null) break;
+            response.add(line);
+        }
+        System.out.println(response.toString());
+        System.out.println(this.conn.read(8084));
+
+      default:
+        return;
+    }
   }
 
   public boolean exists(String name) {
