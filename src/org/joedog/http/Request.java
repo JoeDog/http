@@ -27,11 +27,11 @@ public class Request <K, V> extends Headers {
   public static final String RANGE               = "Range"; 
   public static final String TE                  = "TE"; 
   
-  protected double version;
-  protected URL    url;
-  protected String headers[];
-  protected String request; 
-  protected Config conf;
+  protected double    version;
+  protected URL       url;
+  protected String    headers[];
+  protected String    request; 
+  protected Config    conf;
   
   public Request() {
     this.conf = Config.getInstance();
@@ -39,6 +39,13 @@ public class Request <K, V> extends Headers {
 
   public void setReferer(String referer) {
     this.put(REFERER, referer); 
+  }
+
+  public void setAuthorizationHeader(Auth.TYPE type, String realm) {
+    String header = this.conf.getAuthorizationHeader(type, realm);
+    if (header != null) {
+      this.put(AUTHORIZATION, header); 
+    } 
   }
 
   public String toString() {
