@@ -29,8 +29,16 @@ public class Config extends Properties {
     return _instance;
   }
 
-  public Credentials getCredentials(String realm) {
-    return this.auth.getCredentials(realm);
+  public String getAuthorizationHeader(Auth.TYPE type, String realm) {
+    if (this.auth == null) return null;
+
+    switch (type) {
+      case DIGEST: 
+      case NTLM: 
+      case BASIC:  
+      default:
+        return auth.basicAuthorizationHeader(realm);
+    }
   }
 
   public Enumeration<Object> keys() {
