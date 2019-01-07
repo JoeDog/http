@@ -1,5 +1,7 @@
 package org.joedog.http;
 
+import java.io.UnsupportedEncodingException;
+import java.util.Base64;
 import java.util.LinkedHashMap;
 
 public class Auth {
@@ -13,15 +15,30 @@ public class Auth {
     this.creds.put(c.getRealm(), c);
   }
 
-  public Credentials getCredentials(String realm) {
-    if (creds.get(realm) != null) {
-      return creds.get(realm);
-    }
+  public String basicAuthorizationHeader(String realm) {
+    String clear   = null;
+    String encoded = null;
+    String header  = null;
+    Credentials c  = this.getCredentials(realm);
+    if (c == null) return null;
 
-    if (creds.get("all") != null) {
-      return creds.get("all");
-    }
+    clear  = String.format("%s:%s", c.getUsername(), c.getPassword());
+    try {
+      encoded = Base64.getEncoder().encodeToString(clear.getBytes("utf-8"));
+    } catch(UnsupportedEncodingException ignore) {}
+    header = String.format("Basic %s", encoded);
+    return header;
+  }
 
-    return null;
+  private Credentials getCredentials(String realm) {
+    Credentials c = creds.get(realm);
+
+    if (c != null) {
+      return c;
+    }
+      
+    c = creds.get("all");
+
+    return c;
   }
 }
