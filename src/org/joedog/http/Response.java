@@ -4,15 +4,19 @@ import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 
 public class Response <K, V> extends Headers {
-  public static final String WWW_AUTHENTICATE  = "WWW-Authenticate";  
-  public static final String TRANSFER_ENCODING = "Transfer-Encoding";
+  public static final String WWW_AUTHENTICATE   = "WWW-Authenticate";  
 
-  protected int           code      = 0;
-  protected Auth.TYPE     type      = Auth.TYPE.BASIC;
-  protected String        realm     = null;
-  protected double        version   = 1.0;
-  protected String        message   = null; 
-  protected StringBuilder res       = null;
+
+  public static final String CONNECTION         = "Connection";
+  public static final String TRANSFER_ENCODING  = "Transfer-Encoding";
+
+  protected int                 code      = 0;
+  protected Authorization.TYPE type      = Authorization.TYPE.BASIC;
+  protected Connection.TYPE     conn      = Connection.TYPE.CLOSE;
+  protected String              realm     = null;
+  protected double              version   = 1.0;
+  protected String              message   = null; 
+  protected StringBuilder       res       = null;
 
   public Response() { 
     this.res = new StringBuilder();
@@ -33,8 +37,17 @@ public class Response <K, V> extends Headers {
     return this.code;
   }
 
-  public Auth.TYPE getAuthorizationType() {
+  public Authorization.TYPE getAuthorizationType() {
     return this.type;
+  }
+
+  public Connection.TYPE getConnectionType() {
+    String conn = this.get(CONNECTION);
+    if (conn != null) {
+      if (conn.toLowerCase().equals("close"))      return Connection.TYPE.CLOSE;
+      if (conn.toLowerCase().equals("keep-alive")) return Connection.TYPE.KEEP_ALIVE;
+    }
+    return Connection.TYPE.CLOSE;
   }
 
   public String getAuthorizationRealm() {
@@ -72,13 +85,13 @@ public class Response <K, V> extends Headers {
     }
     res[1].trim();
     if (res[1].toLowerCase().startsWith("basic")) {
-      this.type = Auth.TYPE.BASIC;
+      this.type = Authorization.TYPE.BASIC;
     } else if (res[1].toLowerCase().startsWith("digest")) {
-      this.type = Auth.TYPE.BASIC;
+      this.type = Authorization.TYPE.BASIC;
     } else if (res[1].toLowerCase().startsWith("ntlm")) {
-      this.type = Auth.TYPE.NTLM;
+      this.type = Authorization.TYPE.NTLM;
     } else {
-      this.type = Auth.TYPE.UNSUPPORTED;
+      this.type = Authorization.TYPE.UNSUPPORTED;
     }
     Pattern p = Pattern.compile("realm=\"([^\"]*)\"");
     Matcher m = p.matcher(line);
@@ -87,3 +100,4 @@ public class Response <K, V> extends Headers {
     }    
   }
 }
+
