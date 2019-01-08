@@ -41,7 +41,7 @@ public class Request <K, V> extends Headers {
     this.put(REFERER, referer); 
   }
 
-  public void setAuthorizationHeader(Auth.TYPE type, String realm) {
+  public void setAuthorizationHeader(Authorization.TYPE type, String realm) {
     String header = this.conf.getAuthorizationHeader(type, realm);
     if (header != null) {
       this.put(AUTHORIZATION, header); 
