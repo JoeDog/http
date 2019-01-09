@@ -27,13 +27,17 @@ public class Response <K, V> extends Headers {
 
   public void add(String line) {
     String tmp[] = null;
-    if (! line.contains(":")) {
-      return; // this is an unexpected turn of events....
-    }
+    /**
+     * Preserve the headers as a String
+     */
     this.res.append(line);
     this.res.append("\015\012");
+ 
     if (line.startsWith("HTTP/")) {
       this.parseResponse(line);
+    }
+    if (! line.contains(":")) {
+      return; // this is an unexpected turn of events....
     }
     if (line.startsWith(WWW_AUTHENTICATE)) {
       this.parseAuthenticate(line);
@@ -59,6 +63,24 @@ public class Response <K, V> extends Headers {
       if (conn.toLowerCase().equals("keep-alive")) return Connection.TYPE.KEEP_ALIVE;
     }
     return Connection.TYPE.CLOSE;
+  }
+
+  /**
+   * Returns an int value of the Content-length header
+   * <p>
+   * @param  void
+   * @return int  the Content-length
+   */
+  public int getContentLength() {
+    String tmp = this.get(CONTENT_LENGTH);
+    if (tmp != null) {
+      int len = 0;
+      try {
+        len = Integer.parseInt(tmp);
+      } catch(Exception ignore){}
+      if (len > 0) return len;
+    }
+    return 0;
   }
 
   public TransferEncoding.TYPE getTransferEncoding() {
