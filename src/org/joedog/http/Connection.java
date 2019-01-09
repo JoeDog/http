@@ -150,15 +150,22 @@ public class Connection {
     try {
       while (i < len) {
         byte b = (byte)is.read();
-        System.out.println("B: "+b);
-        if (b == 0 || b == 65535) { 
+        if (b == -1) { 
           return null;
         }
         buf[i] = b;
         i++; 
       }
     } catch (IOException ioe) {}
-    return String.valueOf(buf);
+    return asString(buf);
+  }
+
+  private String asString(byte[] bytes) {
+    String res = "";
+    for (byte b : bytes) {
+      res += (char)b;
+    }
+    return res;
   }
 
   public synchronized boolean write(String msg) {
