@@ -45,36 +45,21 @@ public class HTTP {
     if (this.conn.isClosed()) {
       this.conn.open(this.url);
     }
-    RequestFactory factory = new RequestFactoryImpl();
-    Request        request = factory.getRequest(url, this.version);
+    HeaderFactory factory  = new HeaderFactoryImpl();
+    Request       request  = factory.getRequest(url, this.version);
+    Response      response = factory.getResponse(this.version);
     request.setReferer(url.toString());
     System.out.print(request.toString());
     this.conn.write(request.toString());
-    ResponseFactory industry = new ResponseFactoryImpl();
-    Response        response = industry.getResponse(this.version);
     while (true) {
       String line = this.conn.readline(); 
       if (line == null) break;
       response.add(line);
     }
     System.out.println(response.toString());
-    TransferEncoding te = new TransferEncoding();
-    TransferEncoding.TYPE ty = response.getTransferEncoding();
-    switch (ty) {
-      case CHUNKED:
-        System.out.println("* CHUNKED");
-        break;
-      case FIXED:
-        System.out.println("* FIXED");
-        break;
-      case NONE:
-        System.out.println("* NONE");
-        break;
-    }
-    while (te.hasMore()) {
-      int len = te.length(this.conn);
-      System.out.println(this.conn.read(len));  
-    }
+
+    System.out.println(this.download(response));
+
     if (response.getConnectionType() == Connection.TYPE.CLOSE) {
       this.conn.close();
     }
@@ -85,14 +70,13 @@ public class HTTP {
         this.conn.open(this.url);
         this.conn.write(request.toString());
         System.out.println(request.toString());
-        response = industry.getResponse(this.version);
+        response = factory.getResponse(this.version);
         while (true) {
           String line = this.conn.readline();
           if (line == null) break;
             response.add(line);
         }
-        System.out.println(response.toString());
-        System.out.println(this.conn.read(8084));
+        System.out.println(this.download(response));
 
       default:
         return;
@@ -106,6 +90,25 @@ public class HTTP {
     }
     file = new File(name);
     return file.exists();
+  }
+
+  /**
+   * XXX: Currently reads a string; need to do binary, too
+   */
+  private String download(Response response) {
+    String pg = "";
+    TransferEncoding te = new TransferEncoding(response);
+    while (te.hasMore()) {
+      int len    = te.length(this.conn);
+      String tmp = this.conn.read(len);
+      if (tmp == null) { 
+        te.noMore();
+        return pg;
+      } else {
+        pg += tmp;
+      }
+    }
+    return pg;
   }
 
   private Config load(String file) {
