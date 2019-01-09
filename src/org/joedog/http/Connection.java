@@ -118,24 +118,43 @@ public class Connection {
         // Added for chunked encoding.
         return line;
       }
-      if (line.charAt(1) == '\r' || line.charAt(2) == '\n') {
-        // we should probably never get here...
-        return null; 
+      if (line.length() == 2) {
+        if (line.charAt(0) == '\r' || line.charAt(1) == '\n') {
+          // we should probably never get here...
+          return null; 
+        }
       }
     } catch (IOException ioe) {}
     return line;
   }
 
-  public synchronized String read(int len) {
+  /*public synchronized String read(int len) {
     int  i     = 0;
     char buf[] = new char[len];
     try {
       while (i < len) {
         char c = (char)is.read();
         if ((int)c == 0 || (int)c == 65535) { 
-          break;
+          return null;
         }
         buf[i] = c;
+        i++; 
+      }
+    } catch (IOException ioe) {}
+    return String.valueOf(buf);
+  }*/
+
+  public synchronized String read(int len) {
+    int  i     = 0;
+    byte buf[] = new byte[len];
+    try {
+      while (i < len) {
+        byte b = (byte)is.read();
+        System.out.println("B: "+b);
+        if (b == 0 || b == 65535) { 
+          return null;
+        }
+        buf[i] = b;
         i++; 
       }
     } catch (IOException ioe) {}
