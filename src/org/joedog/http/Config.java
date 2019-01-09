@@ -9,13 +9,13 @@ import java.util.Enumeration;
 import java.util.Vector;
 
 public class Config extends Properties {
-  private static final long serialVersionUID = 1L;
-  private static Config     _instance        = null;
-  private static Object     mutex            = new Object(); 
-  private static Auth       auth             = null;
+  private static final long     serialVersionUID = 1L;
+  private static Config         _instance        = null;
+  private static Object         mutex            = new Object(); 
+  private static Authorization auth             = null;
 
   private Config() {
-    this.auth = new Auth();
+    this.auth = new Authorization();
   }
 
   public synchronized static Config getInstance() {
@@ -29,7 +29,7 @@ public class Config extends Properties {
     return _instance;
   }
 
-  public String getAuthorizationHeader(Auth.TYPE type, String realm) {
+  public String getAuthorizationHeader(Authorization.TYPE type, String realm) {
     if (this.auth == null) return null;
 
     switch (type) {

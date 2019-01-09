@@ -4,14 +4,17 @@ import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 
 public class Response <K, V> extends Headers {
+  /** HTTP/1.0 **/
   public static final String WWW_AUTHENTICATE   = "WWW-Authenticate";  
+  public static final String CONTENT_LENGTH     = "Content-Length"; 
 
-
+  /** HTTP/1.1 **/
   public static final String CONNECTION         = "Connection";
   public static final String TRANSFER_ENCODING  = "Transfer-Encoding";
 
   protected int                 code      = 0;
-  protected Authorization.TYPE type      = Authorization.TYPE.BASIC;
+  protected int                 length    = 0;
+  protected Authorization.TYPE  type      = Authorization.TYPE.BASIC;
   protected Connection.TYPE     conn      = Connection.TYPE.CLOSE;
   protected String              realm     = null;
   protected double              version   = 1.0;
@@ -23,6 +26,10 @@ public class Response <K, V> extends Headers {
   }
 
   public void add(String line) {
+    String tmp[] = null;
+    if (! line.contains(":")) {
+      return; // this is an unexpected turn of events....
+    }
     this.res.append(line);
     this.res.append("\015\012");
     if (line.startsWith("HTTP/")) {
@@ -31,6 +38,10 @@ public class Response <K, V> extends Headers {
     if (line.startsWith(WWW_AUTHENTICATE)) {
       this.parseAuthenticate(line);
     }
+    tmp = line.split(":", 2);
+    String key = tmp[0].trim();
+    String val = tmp[1].trim(); 
+    this.put(key, val); 
   }
 
   public int getCode() {
@@ -48,6 +59,23 @@ public class Response <K, V> extends Headers {
       if (conn.toLowerCase().equals("keep-alive")) return Connection.TYPE.KEEP_ALIVE;
     }
     return Connection.TYPE.CLOSE;
+  }
+
+  public TransferEncoding.TYPE getTransferEncoding() {
+    String type = this.get(TRANSFER_ENCODING);
+    if (type != null) {
+      if (type.startsWith("chunked")) return TransferEncoding.TYPE.CHUNKED;
+    }
+
+    type = this.get(CONTENT_LENGTH);
+    if (type != null) {
+      int i = 0;
+      try {
+        i = Integer.parseInt(type);
+      } catch(Exception ignore){}
+      if (i > 0) return TransferEncoding.TYPE.FIXED;
+    }
+    return TransferEncoding.TYPE.NONE;
   }
 
   public String getAuthorizationRealm() {
@@ -83,12 +111,13 @@ public class Response <K, V> extends Headers {
     if (res[1] == null || res[1].length() < 1) {
       return; // WTF??
     }
-    res[1].trim();
+    String key = res[0].trim();
+    String val = res[1].trim();
     if (res[1].toLowerCase().startsWith("basic")) {
       this.type = Authorization.TYPE.BASIC;
-    } else if (res[1].toLowerCase().startsWith("digest")) {
+    } else if (val.toLowerCase().startsWith("digest")) {
       this.type = Authorization.TYPE.BASIC;
-    } else if (res[1].toLowerCase().startsWith("ntlm")) {
+    } else if (val.toLowerCase().startsWith("ntlm")) {
       this.type = Authorization.TYPE.NTLM;
     } else {
       this.type = Authorization.TYPE.UNSUPPORTED;
@@ -97,7 +126,7 @@ public class Response <K, V> extends Headers {
     Matcher m = p.matcher(line);
     while (m.find()) {
       this.realm = m.group(1);
-    }    
+    }
   }
 }
 

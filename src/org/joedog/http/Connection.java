@@ -8,6 +8,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.URL;
 import java.net.Socket;
 import java.net.SocketAddress;
 import javax.net.SocketFactory;
@@ -18,56 +19,105 @@ import java.util.List;
 import java.util.ArrayList;
 
 public class Connection {
+  public enum TYPE { CLOSE, KEEP_ALIVE; }
+
   private String  host      = null;
   private int     port      = 80;
   private Socket  sock      = null;
   private boolean secure    = false;
+  private boolean closed    = true;
   private int timeout       = (15*1000);
   private PrintWriter    os = null;
   private BufferedReader is = null;
+
+  public Connection() {
+    // a stub - we'll rely on open()
+  }
 
   public Connection(String host, int port) {
     this.host    = host;
     this.port    = port;
     this.secure  = false;
-    this.open(host, port, secure);
   }
 
   public Connection(String host, int port, boolean secure) {
     this.host    = host;
     this.port    = port;
     this.secure  = secure;
-    this.open(host, port, secure);
   }
 
   public Connection(String host, int port, int timeout, boolean secure) {
     this.host    = host;
     this.port    = port;
-    this.secure  = secure;
     this.timeout = (timeout*1000);
-    this.open(host, port, secure);
+    this.secure  = secure;
   }
 
-  public boolean isConnected() {
-    if (this.sock == null) { 
-      return false;
-    } else if (this.sock.isConnected()){
+  public boolean open(URL url) {
+    this.host    = url.getHost();
+    this.port    = (url.getPort() > 0) ? url.getPort() : url.getDefaultPort();  
+    this.secure  = (url.getProtocol().equals("https")) ? true : false;
+    return this.open();
+  }
+
+  public boolean open(String host, int port, boolean secure) {
+    this.host    = host;
+    this.port    = port;
+    this.secure  = secure;
+    return this.open();
+  }
+
+  public boolean open(String host, int port, int timeout, boolean secure) {
+    this.host    = host;
+    this.port    = port;
+    this.timeout = (timeout*1000);
+    this.secure  = secure;
+    return this.open();
+  }
+
+  public boolean isClosed() {
+    if (this.os   == null) {
       return true;
-    } else {
-      try {
-        this.sock.close();
-      } catch (IOException ignored) {}
-      this.sock = null;
-      return false;
     }
+    if (this.is   == null) {
+      return true;
+    }
+    if (this.sock == null) {
+      return true;
+    }
+    return this.closed;
   }
 
-  public String readline() {
+  public synchronized boolean close() {
+    try {
+      if (this.is != null) {
+        this.is.close();
+        this.is = null;
+      }
+      if (this.os != null) {
+        this.os.close();
+        this.os = null;
+      }
+      if (! this.sock.isClosed()) {
+        this.sock.close();
+        this.sock = null;
+      }
+      this.closed = true;
+      return this.closed;
+    } catch (IOException ignore) {}
+    return false;
+  }
+
+  public synchronized String readline() {
     String line = null;
     try {
       line = is.readLine();
       if (line == null)       return null; 
       if (line.length() == 0) return null;
+      if (line.length() == 1) { 
+        // Added for chunked encoding.
+        return line;
+      }
       if (line.charAt(1) == '\r' || line.charAt(2) == '\n') {
         // we should probably never get here...
         return null; 
@@ -76,7 +126,7 @@ public class Connection {
     return line;
   }
 
-  public String read(int len) {
+  public synchronized String read(int len) {
     int  i     = 0;
     char buf[] = new char[len];
     try {
@@ -92,8 +142,8 @@ public class Connection {
     return String.valueOf(buf);
   }
 
-  public boolean write(String msg) {
-    if (!isConnected()) {
+  public synchronized boolean write(String msg) {
+    if (this.closed) {
       return false;
     }
     os.print(msg);
@@ -101,30 +151,33 @@ public class Connection {
     return true;
   }
 
-  private boolean open(String host, int port, boolean secure){
+  private synchronized boolean open(){
+    if (! this.isClosed()) {
+      return true;
+    }
     this.sock = new Socket();
     try {
-      if (secure) {
+      if (this.secure) {
         try {
           SocketFactory factory  = null;;
           SSLParameters params   = new SSLParameters();
           SSLContext    context  = SSLContext.getDefault();
           List          sniNames = new ArrayList(1);
-          sniNames.add(new SNIHostName(host));
+          sniNames.add(new SNIHostName(this.host));
           params.setServerNames(sniNames);
           factory = new SNISocketFactory(context.getSocketFactory(), params);
-          this.sock = factory.createSocket(host, port);
+          this.sock = factory.createSocket(this.host, this.port);
         } catch (Exception e) {
           throw new IOException("SSL failure");
         }
       } else {
-        InetAddress   iaddr = InetAddress.getByName(host);
+        InetAddress   iaddr = InetAddress.getByName(this.host);
         SocketAddress saddr = new InetSocketAddress(iaddr, port);
         this.sock.connect(saddr, this.timeout);
       }
       if (this.sock == null) {
         this.sock.close();
-        throw new IllegalArgumentException("ERROR: Unable to connect to host: "+host);
+        throw new IllegalArgumentException("ERROR: Unable to connect to host: "+this.host);
       }
       this.os = new PrintWriter(
                 new BufferedWriter(
@@ -133,6 +186,7 @@ public class Connection {
       this.is = new BufferedReader(
                 new InputStreamReader(this.sock.getInputStream())
       );
+      this.closed = false;
       return true;
     } catch (SocketTimeoutException ste) {
       System.err.println("ERROR: Timed out waiting for the socket.");

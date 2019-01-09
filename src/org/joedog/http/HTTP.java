@@ -12,7 +12,6 @@ import java.util.Properties;
 
 public class HTTP {
   private URL        url     = null;
-  private boolean    secure  = false;
   private Connection conn    = null;
   private Response   res     = null;
   private Request    req     = null;
@@ -21,6 +20,7 @@ public class HTTP {
 
   public HTTP() {
     this.conf    = load(null);
+    this.conn    = new Connection();
     if (this.conf.getProperty("version") != null) {
       this.version = Double.parseDouble(this.conf.getProperty("version"));
     }
@@ -29,6 +29,7 @@ public class HTTP {
   public HTTP(double version) {
     this.version = version;
     this.conf    = load(null);
+    this.conn    = new Connection();
   }
 
   public void get(String url) {
@@ -41,11 +42,9 @@ public class HTTP {
 
   public void get(URL url) {
     this.url = url;
-
-    if (this.url.getProtocol().equals("https")) {
-      this.secure = true;
+    if (this.conn.isClosed()) {
+      this.conn.open(this.url);
     }
-    this.conn = new Connection(this.url.getHost(), this.url.getDefaultPort(), this.secure);
     RequestFactory factory = new RequestFactoryImpl();
     Request        request = factory.getRequest(url, this.version);
     request.setReferer(url.toString());
@@ -59,12 +58,31 @@ public class HTTP {
       response.add(line);
     }
     System.out.println(response.toString());
-    System.out.println(this.conn.read(8084));
+    TransferEncoding te = new TransferEncoding();
+    TransferEncoding.TYPE ty = response.getTransferEncoding();
+    switch (ty) {
+      case CHUNKED:
+        System.out.println("* CHUNKED");
+        break;
+      case FIXED:
+        System.out.println("* FIXED");
+        break;
+      case NONE:
+        System.out.println("* NONE");
+        break;
+    }
+    while (te.hasMore()) {
+      int len = te.length(this.conn);
+      System.out.println(this.conn.read(len));  
+    }
+    if (response.getConnectionType() == Connection.TYPE.CLOSE) {
+      this.conn.close();
+    }
 
     switch (response.getCode()) {
       case 401: // Authenticate
         request.setAuthorizationHeader(response.getAuthorizationType(), response.getAuthorizationRealm());
-        this.conn = new Connection(this.url.getHost(), this.url.getDefaultPort(), this.secure);
+        this.conn.open(this.url);
         this.conn.write(request.toString());
         System.out.println(request.toString());
         response = industry.getResponse(this.version);

@@ -96,7 +96,11 @@ public class Request <K, V> extends Headers {
       }
       /************** v1.1 **************/
       if (this.headers[i].equals(CONNECTION)) {
-        this.put(CONNECTION, this.conf.getProperty("connection")); 
+        if (this.conf.getProperty("connection") != null) {
+          this.put(CONNECTION, this.conf.getProperty("connection")); 
+        } else {
+          this.put(CONNECTION, "close"); 
+        }
       }
     }
   }
