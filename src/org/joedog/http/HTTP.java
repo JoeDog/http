@@ -11,12 +11,14 @@ import java.nio.file.Paths;
 import java.util.Properties;
 
 public class HTTP {
-  private URL        url     = null;
-  private Connection conn    = null;
-  private Response   res     = null;
-  private Request    req     = null;
-  private double     version = 1.1;
-  private Config     conf    = null;
+  private Connection    conn    = null;
+  private Response      res     = null;
+  private Request       req     = null;
+  private double        version = 1.1;
+  private Config        conf    = null;
+  private History       history = null;
+  private Authorization auth    = null;
+  private Cookies       cookies = null;  
 
   public HTTP() {
     this.conf    = load(null);
@@ -24,12 +26,18 @@ public class HTTP {
     if (this.conf.getProperty("version") != null) {
       this.version = Double.parseDouble(this.conf.getProperty("version"));
     }
+    this.history = new History();
+    this.auth    = new Authorization();
+    this.cookies = Cookies.getInstance();
   }
 
   public HTTP(double version) {
     this.version = version;
     this.conf    = load(null);
     this.conn    = new Connection();
+    this.history = new History();
+    this.auth    = new Authorization();
+    this.cookies = Cookies.getInstance();
   }
 
   public void get(String url) {
@@ -41,14 +49,26 @@ public class HTTP {
   }
 
   public void get(URL url) {
-    this.url = url;
+    Event event = null;
     if (this.conn.isClosed()) {
-      this.conn.open(this.url);
+      this.conn.open(url);
     }
+    if (this.history.contains(url)) {
+      event = history.getEvent(url);
+    } else {
+      event = new Event();
+      event.addUrl(url);
+    }
+    this.history.addEvent(event);
+
     HeaderFactory factory  = new HeaderFactoryImpl();
     Request       request  = factory.getRequest(url, this.version);
     Response      response = factory.getResponse(this.version);
     request.setReferer(url.toString());
+    request.setCookie(this.cookies.getCookieHeader(url));
+    if (event.getAuthorizationHeader() != null) {
+      request.setAuthorizationHeader(event.getAuthorizationHeader());
+    }
     System.out.print(request.toString());
     this.conn.write(request.toString());
     while (true) {
@@ -67,7 +87,9 @@ public class HTTP {
     switch (response.getCode()) {
       case 401: // Authenticate
         request.setAuthorizationHeader(response.getAuthorizationType(), response.getAuthorizationRealm());
-        this.conn.open(this.url);
+        request.setCookie(this.cookies.getCookieHeader(url));
+        event.setAuthorizationHeader(request.getAuthorizationHeader());
+        this.conn.open(url);
         this.conn.write(request.toString());
         System.out.println(request.toString());
         response = factory.getResponse(this.version);
@@ -91,6 +113,18 @@ public class HTTP {
     file = new File(name);
     return file.exists();
   }
+
+  private String getCookieHeader() {
+    StringBuffer sb = new StringBuffer("");
+    for (Cookie cookie : this.cookies) {
+      System.out.printf("COOKIE NAME:  %s\n", cookie.getName());
+      System.out.printf("COOKIE VALUE: %s\n", cookie.getValue());
+      String tmp = String.format("%s=%s;", cookie.getName(), cookie.getValue());
+      sb.append(tmp);
+    }
+    return sb.toString();
+  }
+
 
   /**
    * XXX: Currently reads a string; need to do binary, too
