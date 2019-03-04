@@ -41,11 +41,27 @@ public class Request <K, V> extends Headers {
     this.put(REFERER, referer); 
   }
 
+  public void setCookie(String cookie) {
+    if (cookie.length() > 0) {
+      this.put(COOKIE, cookie);
+    }
+  }
+
+  public void setAuthorizationHeader(String header) {
+    if (header != null) {
+      this.put(AUTHORIZATION, header); 
+    } 
+  }
+
   public void setAuthorizationHeader(Authorization.TYPE type, String realm) {
     String header = this.conf.getAuthorizationHeader(type, realm);
     if (header != null) {
       this.put(AUTHORIZATION, header); 
     } 
+  }
+
+  public String getAuthorizationHeader() {
+    return this.get(AUTHORIZATION);
   }
 
   public String toString() {
