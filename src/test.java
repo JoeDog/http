@@ -3,7 +3,11 @@ import org.joedog.http.*;
 public class test {
   public static void main(String [] args) {
     HTTP http = new HTTP();
-    http.get("https://www.joedog.org/secret/");
+    for (int i = 0; i < 5; i++) {
+      http.get("https://www.joedog.org/siege/cookie-expire.php");
+    } 
+    //http.get("https://www.joedog.org/siege/cookie-expire.php");
+    //http.get("https://www.joedog.org/siege/cookie-expire.php");
     //http.get("http://lisa.joedog.org/");
   }
 }
