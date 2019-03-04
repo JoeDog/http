@@ -7,6 +7,7 @@ public class Response <K, V> extends Headers {
   /** HTTP/1.0 **/
   public static final String WWW_AUTHENTICATE   = "WWW-Authenticate";  
   public static final String CONTENT_LENGTH     = "Content-Length"; 
+  public static final String SET_COOKIE         = "Set-Cookie";  
 
   /** HTTP/1.1 **/
   public static final String CONNECTION         = "Connection";
@@ -20,9 +21,11 @@ public class Response <K, V> extends Headers {
   protected double              version   = 1.0;
   protected String              message   = null; 
   protected StringBuilder       res       = null;
+  protected Cookies             cookies   = null;
 
   public Response() { 
-    this.res = new StringBuilder();
+    this.res     = new StringBuilder();
+    this.cookies = Cookies.getInstance();
   }
 
   public void add(String line) {
@@ -35,6 +38,9 @@ public class Response <K, V> extends Headers {
  
     if (line.startsWith("HTTP/")) {
       this.parseResponse(line);
+    }
+    if (line.startsWith(SET_COOKIE)) {
+      this.cookies.add(line);
     }
     if (! line.contains(":")) {
       return; // this is an unexpected turn of events....
