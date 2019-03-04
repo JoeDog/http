@@ -9,12 +9,12 @@ import java.util.Enumeration;
 import java.util.Vector;
 
 public class Config extends Properties {
-  private static final long     serialVersionUID = 1L;
-  private static Config         _instance        = null;
-  private static Object         mutex            = new Object(); 
+  private static final long    serialVersionUID = 1L;
+  private static Config        _instance        = null;
+  private static Object        mutex            = new Object(); 
   private static Authorization auth             = null;
 
-  private Config() {
+  private Config() { 
     this.auth = new Authorization();
   }
 
