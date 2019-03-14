@@ -117,8 +117,6 @@ public class HTTP {
   private String getCookieHeader() {
     StringBuffer sb = new StringBuffer("");
     for (Cookie cookie : this.cookies) {
-      System.out.printf("COOKIE NAME:  %s\n", cookie.getName());
-      System.out.printf("COOKIE VALUE: %s\n", cookie.getValue());
       String tmp = String.format("%s=%s;", cookie.getName(), cookie.getValue());
       sb.append(tmp);
     }
