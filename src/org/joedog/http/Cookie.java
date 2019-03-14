@@ -1,5 +1,10 @@
 package org.joedog.http;
 
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Date;
+import java.text.ParseException;
+
 public class Cookie {
   private String     name     = "";
   private String     value    = "";
@@ -11,6 +16,9 @@ public class Cookie {
   private Boolean    secure   = false;
   private Boolean    httpOnly = true;
   private String     none     = "none";
+  private Date       date     = null;
+
+  private static String RFC_1123 = "EEE, dd-MMM-yyyy HH:mm:ss Z";
 
   public Cookie() {
     
@@ -19,6 +27,11 @@ public class Cookie {
   public Cookie(String name, String value) {
     this.name  = name;
     this.value = value;
+  }
+
+  public Cookie(String name, String value, String path) {
+    this(name, value);
+    if (path != null && path.length() > 0) this.setPath(path);
   }
 
   public void setName(String name) {
@@ -45,6 +58,15 @@ public class Cookie {
     return (this.domain != null) ? this.domain : this.none;
   }
 
+  public boolean inDomain(String host) {
+    if (this.domain == null) {
+      return true; // never set a domain  
+    }
+
+    boolean b = host.endsWith(this.domain);
+    return b;
+  }
+
   public void setPath(String path) {
     this.path = path;
   }
@@ -53,11 +75,40 @@ public class Cookie {
     return (this.path != null) ? this.path : this.none;
   }
 
-  public void setExpires(String expires) {
-    this.expires = expires;
+  public boolean inPath(String path) {
+    if (this.path == null || this.path.length() < 1) { 
+      return true; // never set a path
+    }
+
+    boolean b = path.startsWith(this.path);
+    return b;
   }
 
-  public Boolean isSession() {
+  public void setExpires(String expires) {
+    if (expires == null || expires.length() < 1) 
+      return;
+
+    try {
+      SimpleDateFormat sdf  = new SimpleDateFormat(this.RFC_1123);
+      Calendar         cal  = Calendar.getInstance();
+      cal.setTime(sdf.parse(expires));
+      this.date = cal.getTime();
+    } catch (ParseException pe) {}
+  }
+
+  public boolean isExpired() {
+    if (this.date == null) {  
+      return false; // never set an expiration
+    }
+
+    Date now = new Date();
+    if (now.after(this.date)) {
+      return true;
+    }
+    return false;
+  }
+
+  public boolean isSession() {
     return this.session;
   }
 
@@ -74,6 +125,6 @@ public class Cookie {
   }
 
   public String toString() {
-    return String.format("%s='%s'; domain='%s'; path='%s'; expires='%s' HttpOnly='%s'", this.name, this.value, this.domain, this.path, this.expires, this.httpOnly);
+    return String.format("%s='%s'; domain='%s'; path='%s'; expires='%s' HttpOnly='%s'", this.name, this.value, this.domain, this.path, this.date.toString(), this.httpOnly);
   }
 }
