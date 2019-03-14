@@ -37,8 +37,13 @@ public class Cookies implements Iterable<Cookie>  {
     String host     = url.getHost();
     String path     = url.getPath();
     StringBuffer sb = new StringBuffer();
-    for (Cookie c : this) {
-      if ((path.startsWith(c.getPath())) && (host.endsWith(c.getDomain()))) {
+    for (Iterator<Cookie> iter = this.cookies.iterator(); iter.hasNext(); ) {
+      Cookie c = iter.next();
+      if (c.isExpired()) {
+        iter.remove();
+        continue;
+      } 
+      if (c.inPath(path) && c.inDomain(host)) {
         String buf  = (sb.length() > 1) ? " " : "";
         sb.append(c.getName()+"="+c.getValue()+";"+buf);
       }
@@ -73,7 +78,6 @@ public class Cookies implements Iterable<Cookie>  {
       Matcher m = p.matcher(parts[0]);
       if (m.matches()) {
         cookie = new Cookie(m.group(1), m.group(2));
-        this.add(cookie);
         if (parts.length > 1) {
           for (int i = 1; i < parts.length; i++) {
             String tmp = parts[i].trim();
@@ -88,36 +92,25 @@ public class Cookies implements Iterable<Cookie>  {
               if (tmp.equals("HttpOnly")) cookie.setHttpOnly(true);
             }
           }
-        } else {
-          //System.out.printf("PARTS LESS THAN 2) LINE: '%s'\n", line); 
         }
-      } else {
-        //System.out.printf(">>>>>>>>>>>>>>>>>>>>>>>> PART[0]: %s\n", parts[0]); 
       }
     }
-    /*Pattern pattern = Pattern.compile("([^=]+)=([^\\;]*);?\\s?");
-    Matcher matcher = pattern.matcher(line);
-    while (matcher.find()) {
-      int count = matcher.groupCount();
-      if (count == 2) {
-        if (matcher.group(1).equals("expires")) {
-          expires = matcher.group(2);
-        } else if (matcher.group(1).equals("path")) {
-          path = matcher.group(2);
-        } else if (matcher.group(1).equals("domain")) {
-          domain = matcher.group(2);
-        } else {
-          name  = matcher.group(1);
-          value = matcher.group(2);
+    if (! exists(cookie)) {
+      this.add(cookie);
+    }
+  }
+
+  public boolean exists(Cookie cookie) {
+    for (Iterator<Cookie> iter = this.cookies.iterator(); iter.hasNext(); ) {
+      Cookie c = iter.next();
+      if (cookie.getName().equals(c.getName())) {
+        if (c.inPath(cookie.getPath()) && c.inDomain(cookie.getDomain())) {
+          c.setValue(cookie.getValue());
+          return true;
         }
       }
-      for (int i = 0; i <= count; ++i) {
-        System.out.println("group[" + i + "]=" + matcher.group(i));
-      }
-      name  = matcher.group(1);
-      value = matcher.group(2);
-    }*/
-    System.out.printf("COOKIE: %s\n", cookie.toString());
+    }
+    return false;
   }
 
   @Override
@@ -146,109 +139,33 @@ public class Cookies implements Iterable<Cookie>  {
     for (Iterator<Cookie> iter = this.cookies.iterator(); iter.hasNext(); ) {
       Cookie c = iter.next();
       if (c.getName().equals(cookie.getName())) {
-        iter.remove();
+        if (! c.isExpired()) {
+           c.setValue(cookie.getValue());
+           return;
+        }
       }
     }
     cookies.add(cookie);
   } 
 
-  /**
-   * Largely stolen from the public domain.
-   * Parses cookie[s] from a Set-Cookie header and places
-   * a cookie object into this <String, Cookie>
-   * Set-Cookie: __cfduid=d67fd1; expires=Thu, 09-Jan-20 20:55:05 GMT; path=/; domain=.joedog.org; HttpOnly
-   * @Author: unknown
-   * <p>
-   * @param  String cookie_header
-   * @return void
-   */
-/*************************************************************************
-  public void add(String header) {
-    Cookie          cookie    = null;
-    String          key       = null;
-    String          name      = null;
-    String          value     = null;
-    String          token     = null;
-    StringTokenizer tokenizer = null;
-
-    String tmp = header.replaceFirst("^Set-Cookie: ", "");
-    tokenizer  = new StringTokenizer(tmp, ";,", true);
-    
-    while (tokenizer.hasMoreTokens()) {
-      token = tokenizer.nextToken().trim();
-      if (token.equals (";")) { 
-        continue;
-      }
-      if (token.equals(",")) {
-        // need a second cookie
-        name   = null;
-        value  = null;
-        cookie = null;
-        continue;
-      }
-      
-      int i = token.indexOf('=');    
-      if (i == -1) {
-        // This is a token like HttpOnly which is not in key=val format
-        name  = token;
-        value = null;  
-        key   = name.toLowerCase();
-      } else {
-        name  = token.substring (0, i);
-        value = token.substring (i + 1);
-        key   = name.toLowerCase();
-      }
-
-      if (cookie == null) {
-        cookie = new Cookie(name, value);
-        this.add(cookie);
-      } else {
-        if (key.equals("expires")) {
-          String c = "";
-          String m = "";
-          if (value.length() < 4) {
-            c = tokenizer.nextToken();
-            m = tokenizer.nextToken();
-          }
-          value = String.format("%s%s%s", value, c, m);
-        } else if (key.equals("path")) {
-          if (value != null) {
-            cookie.setPath(value);
-          }
-        } else if (key.equals("domain")) {
-          if (value != null) {
-            cookie.setDomain(value);
-          }
-        } else if (key.equals("secure")) {
-          //System.out.println("secure");
-        } else if (key.equals("comment")) {
-          //System.out.println("comment: "+value);
-        } else if (key.equals("version")) {
-          //System.out.println("version: "+value);
-        } else if (key.equals("max-age")) {
-          //System.out.println("max-age: "+value);
-        } else {
-          if (key.equals("httponly")) {   
-            //System.out.println("HttpOnly");
-          }
-        }
-      }
-    } 
-  }
-*************************************************************************/
-
-  private boolean isToken (String value) {
-    int len;
-    char c;
-    boolean ret = true;
-
-    len = value.length ();
-    for (int i = 0; i < len && ret; i++) {
-      c = value.charAt (i);
-      if (c < ' ' || c > '~' || SPECIAL.indexOf (c) != -1) {
-        ret = false;
+  public synchronized void remove(Cookie cookie) {
+    for (Iterator<Cookie> iter = this.cookies.iterator(); iter.hasNext(); ) {
+      Cookie c = iter.next();
+      if (c.getName().equals(cookie.getName())) {
+        iter.remove();
       }
     }
-    return (ret);
+  }
+
+  public String toString() {
+    String ret = "";
+    int i = 1;
+    for (Cookie c : this) {
+      if (c != null) {
+        ret += i+".) "+c.toString()+"\n"; 
+        i++;
+      } 
+    }
+    return ret;
   }
 }
